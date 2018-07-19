@@ -1,0 +1,55 @@
+
+class Loginview(APIView):
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data["user"]
+        django_login(request, user)
+        token, created=Token.objects.get_or_create(user=user)
+        return Response(data={"token":token.key},status = 200)
+
+class Logoutview(viewsets.ModelViewSet):
+
+    def post(self, request):
+        django_logout(request)
+        return Response(status=204)
+
+
+    def post(self, request):
+        return self.create(request)
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.set_password(instance.password)
+        instance.save()
+
+
+
+
+
+
+
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+    def validate(self, data):
+        username = data.get("username","")
+        password = data.get("password","")
+
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if user:
+                if user.is_active:
+                    data["user"] = user
+                else:
+                    msg = 'Unable to Login, User Not Allowed to Login'
+                    raise exceptions.ValidationError(msg)
+            else:
+                msg = 'Unable to Login with Giver cradentioals'
+                raise exceptions.ValidationError(msg)
+        else:
+            msg = 'Must provide Username and Password'
+            raise exceptions.ValidationError(msg)
+
+        return data
